@@ -1,3 +1,6 @@
+"""
+Simulación de tráfico en una intersección con tres carriles y semáforos secuencial
+"""
 import numpy as np
 from trafficSim import *
 import csv
