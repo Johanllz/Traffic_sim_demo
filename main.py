@@ -341,23 +341,50 @@ NUM_ITERATIONS = 1  # número de iteraciones
 win = Window(sim)
 win.zoom = 10
 
-# Ejecutar la simulación por el número de iteraciones especificado
+# Registrar tiempo de ejecución de la versión secuencial
+import time
+start_time = time.time()
+
+# Ejecutar la versión secuencial
 for _ in range(NUM_ITERATIONS):
     if not sim.isPaused:
         win.run(steps_per_update=STEPS_PER_UPDATE)
 
-# Calcular métricas
-def calculate_metrics(sim):
-    # Speedup y eficiencia
-    sequential_time = 100  # Tiempo de la versión secuencial (en segundos, ajustar según corresponda)
-    parallel_time = sim.t  # Tiempo de la versión actual
-    num_processors = 4     # Número de procesadores (ajustar según corresponda)
-    speedup = sequential_time / parallel_time
-    efficiency = speedup / num_processors
+end_time = time.time()
+sequential_time = end_time - start_time  # Tiempo de ejecución secuencial en segundos
+print(f"Tiempo de ejecución secuencial: {sequential_time:.2f} segundos")
+"""
 
-    # Imprimir métricas
-    print(f"Speedup: {speedup:.2f}")
-    print(f"Eficiencia: {efficiency:.2f}")
+# Registrar tiempo de ejecución de la versión paralela
+start_time = time.time()
+# Ejecutar la versión paralela (deberás implementar esta parte)
+# parallel_sim.run_parallel(steps_per_update=STEPS_PER_UPDATE)
+end_time = time.time()
+parallel_time = end_time - start_time
+
+# Calcular métricas
+speedup = sequential_time / parallel_time
+num_processors = 4  # Ajustar según el número de procesadores utilizados
+efficiency = speedup / num_processors
+
+# Imprimir métricas
+print(f"Tiempo secuencial: {sequential_time:.2f} segundos")
+print(f"Tiempo paralelo: {parallel_time:.2f} segundos")
+print(f"Speedup: {speedup:.2f}")
+print(f"Eficiencia: {efficiency:.2f}")
+
+"""
+
+# Calcular métricas (deshabilitado temporalmente)
+def calculate_metrics(sim):
+    # Speedup y eficiencia (deshabilitado hasta tener versión paralela)
+    # parallel_time = sim.t  # Tiempo de la versión paralela (a implementar)
+    # num_processors = 4     # Número de procesadores (ajustar según corresponda)
+    # speedup = sequential_time / parallel_time
+    # efficiency = speedup / num_processors
+
+    # Imprimir métricas (solo tiempo secuencial por ahora)
+    print(f"Tiempo secuencial registrado: {sequential_time:.2f} segundos")
 
 # Llamar a la función después de la simulación
 calculate_metrics(sim)
