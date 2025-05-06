@@ -334,8 +334,30 @@ sim.create_signal([[25]])
 sim.create_signal([[26]])
 sim.create_signal([[27]])
 
+# Número de iteraciones
+NUM_ITERATIONS = 3  # Cambiar este valor para modificar el número de iteraciones
+
 # Iniciar simulación
 win = Window(sim)
 win.zoom = 10
-if(sim.isPaused == False):
-    win.run(steps_per_update=STEPS_PER_UPDATE)
+
+# Ejecutar la simulación por el número de iteraciones especificado
+for _ in range(NUM_ITERATIONS):
+    if not sim.isPaused:
+        win.run(steps_per_update=STEPS_PER_UPDATE)
+
+# Calcular métricas
+def calculate_metrics(sim):
+    # Speedup y eficiencia
+    sequential_time = 100  # Tiempo de la versión secuencial (en segundos, ajustar según corresponda)
+    parallel_time = sim.t  # Tiempo de la versión actual
+    num_processors = 4     # Número de procesadores (ajustar según corresponda)
+    speedup = sequential_time / parallel_time
+    efficiency = speedup / num_processors
+
+    # Imprimir métricas
+    print(f"Speedup: {speedup:.2f}")
+    print(f"Eficiencia: {efficiency:.2f}")
+
+# Llamar a la función después de la simulación
+calculate_metrics(sim)

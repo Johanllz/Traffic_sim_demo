@@ -5,10 +5,10 @@ from .traffic_signal import TrafficSignal
 import csv
 
 class Simulation:
-    vehiclesPassed = 0;
-    vehiclesPresent = 0;
-    vehicleRate = 0;
-    isPaused = False;
+    vehiclesPassed = 0
+    vehiclesPresent = 0
+    vehicleRate = 0
+    isPaused = False
 
     def __init__(self, config={}):
         # Establecer configuración predeterminada
