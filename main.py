@@ -335,7 +335,7 @@ sim.create_signal([[26]])
 sim.create_signal([[27]])
 
 # Número de iteraciones
-NUM_ITERATIONS = 3  # Cambiar este valor para modificar el número de iteraciones
+NUM_ITERATIONS = 1  # número de iteraciones
 
 # Iniciar simulación
 win = Window(sim)
