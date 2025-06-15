@@ -1,21 +1,20 @@
 """
-Simulación de tráfico en una intersección con tres carriles y semáforos secuencial
+Simulación de tráfico en paralelo (sin renderizado Pygame)
 """
 import numpy as np
 from trafficSim import *
-import csv
+import time
+import concurrent.futures
 
-sim = Simulation()
+# --- Copia la configuración de main.py aquí (n, a, b, l, etc.) ---
+n = 20
+a = -2
+b = 12
+l = 300
 
-# Ajuste de parámetros
-n = 20      # Iteraciones para las curvas de las carreteras
-a = -2      # Indica el punto a
-b = 12      # Indica el punto b
-l = 300     # Longitud de la carretera
-
-NUM_OF_ROADS = 36 # Número de carreteras
-VEHICLE_RATE = 400 # Tasa de generación de vehículos por minuto
-STEPS_PER_UPDATE = 1   # Número de pasos por actualización
+NUM_OF_ROADS = 36
+VEHICLE_RATE = 400
+STEPS_PER_UPDATE = 1
 
 # Nodos
 WEST_RIGHT_START = (-b-l, a)  # Inicio del carril derecho en el oeste
@@ -178,6 +177,8 @@ EAST_LEFT_TURN3 = turn_road(EAST_RIGHT3, SOUTH_LEFT3, TURN_LEFT, n)
 NORTH_RIGHT_TURN3 = turn_road(NORTH_RIGHT3, WEST_LEFT3, TURN_RIGHT, n)
 NORTH_LEFT_TURN3 = turn_road(NORTH_RIGHT3, EAST_LEFT3, TURN_LEFT, n)
 
+sim = Simulation()
+
 sim.create_roads([
     WEST_INBOUND,   #0
     SOUTH_INBOUND,  #1
@@ -334,68 +335,60 @@ sim.create_signal([[25]])
 sim.create_signal([[26]])
 sim.create_signal([[27]])
 
-# Número de iteraciones
-NUM_ITERATIONS = 1  # número de iteraciones
+NUM_ITERATIONS = 1
 
-# Iniciar simulación
-win = Window(sim)
-win.zoom = 10
+# --- Versión paralela: actualizar carreteras en paralelo ---
+def update_roads_parallel(roads, dt):
+    # Función para actualizar una sola carretera
+    def update_road(road):
+        road.update(dt)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        executor.map(update_road, roads)
 
-# Registrar tiempo de ejecución de la versión secuencial
-import time
-start_time = time.time()
+def run_parallel(sim, steps):
+    for _ in range(steps):
+        # Actualizar carreteras en paralelo
+        update_roads_parallel(sim.roads, sim.dt)
+        # Agregar vehículos (secuencial)
+        for gen in sim.generators:
+            gen.update()
+        # Actualizar semáforos (secuencial)
+        for signal in sim.traffic_signals:
+            signal.update(sim)
+        # Verificar carreteras para vehículos fuera de límites (secuencial)
+        for road in sim.roads:
+            if len(road.vehicles) == 0: continue
+            vehicle = road.vehicles[0]
+            if vehicle.x >= road.length:
+                if vehicle.current_road_index + 1 < len(vehicle.path):
+                    vehicle.current_road_index += 1
+                    from copy import deepcopy
+                    new_vehicle = deepcopy(vehicle)
+                    new_vehicle.x = 0
+                    next_road_index = vehicle.path[vehicle.current_road_index]
+                    sim.roads[next_road_index].vehicles.append(new_vehicle)
+                else:
+                    Simulation.vehiclesPassed += 1
+                road.vehicles.popleft()
+        # Actualizar vehículos presentes
+        Simulation.vehiclesPresent = sum(len(road.vehicles) for road in sim.roads)
+        # Incrementar tiempo
+        sim.t += sim.dt
+        sim.frame_count += 1
 
-MAX_TIME = 50.0  # segundos simulados
+# --- Medir tiempo de ejecución paralelo ---
 MAX_FRAMES = 3000  # número de frames para comparación justa
 
-# Ejecutar la versión secuencial
-for _ in range(NUM_ITERATIONS):
-    if not sim.isPaused:
-        win.run(steps_per_update=STEPS_PER_UPDATE)
-        if sim.frame_count >= MAX_FRAMES:
-            break
-
-end_time = time.time()
-sequential_time = end_time - start_time  # Tiempo de ejecución secuencial en segundos
-print(f"Tiempo de ejecución secuencial: {sequential_time:.2f} segundos")
-"""
-
-# Registrar tiempo de ejecución de la versión paralela
+# --- Medir tiempo de ejecución paralelo ---
 start_time = time.time()
-# Ejecutar la versión paralela (deberás implementar esta parte)
-# parallel_sim.run_parallel(steps_per_update=STEPS_PER_UPDATE)
+run_parallel(sim, steps=MAX_FRAMES)
 end_time = time.time()
 parallel_time = end_time - start_time
 
-# Calcular métricas
-speedup = sequential_time / parallel_time
-num_processors = 4  # Ajustar según el número de procesadores utilizados
-efficiency = speedup / num_processors
+# --- Imprimir métricas ---
+print(f"Tiempo de ejecución paralelo: {parallel_time:.2f} segundos")
 
-# Imprimir métricas
-print(f"Tiempo secuencial: {sequential_time:.2f} segundos")
-print(f"Tiempo paralelo: {parallel_time:.2f} segundos")
-print(f"Speedup: {speedup:.2f}")
-print(f"Eficiencia: {efficiency:.2f}")
-
-"""
-
-# Calcular métricas (deshabilitado temporalmente)
-def calculate_metrics(sim):
-    # Speedup y eficiencia (deshabilitado hasta tener versión paralela)
-    # parallel_time = sim.t  # Tiempo de la versión paralela (a implementar)
-    # num_processors = 4     # Número de procesadores (ajustar según corresponda)
-    # speedup = sequential_time / parallel_time
-    # efficiency = speedup / num_processors
-
-    # Imprimir métricas (solo tiempo secuencial por ahora)
-    print(f"Tiempo secuencial registrado: {sequential_time:.2f} segundos")
-
-# Llamar a la función después de la simulación
-calculate_metrics(sim)
-
-# Imprimir parámetros y métricas adicionales
-print("\n--- Parámetros y métricas de la simulación secuencial ---")
+print("\n--- Parámetros y métricas de la simulación paralela ---")
 print(f"Tiempo simulado: {sim.t:.2f} s")
 print(f"Frames simulados: {sim.frame_count}")
 print(f"Vehículos que pasaron: {Simulation.vehiclesPassed}")
@@ -412,3 +405,15 @@ else:
 print(f"Número de carreteras: {len(sim.roads)}")
 print(f"Número de semáforos: {len(sim.traffic_signals)}")
 print("---------------------------------------------------------")
+
+# --- Comparar con la versión secuencial ---
+sequential_time = 50.0  # Pon aquí el tiempo de la versión secuencial
+speedup = sequential_time / parallel_time
+num_processors = 6  # Ajusta según tu CPU real
+efficiency = speedup / num_processors
+
+print(f"\nComparación:")
+print(f"Tiempo secuencial: {sequential_time:.2f} segundos")
+print(f"Tiempo paralelo: {parallel_time:.2f} segundos")
+print(f"Speedup: {speedup:.2f}")
+print(f"Eficiencia: {efficiency:.2f}")

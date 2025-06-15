@@ -85,11 +85,70 @@ class Window:
                 elif event.type == pygame.MOUSEBUTTONUP:
                     self.mouse_down = False           
 
-    def run(self, steps_per_update=1):
+    def run(self, steps_per_update=1, max_frames=None):
         """Ejecuta la simulación actualizando en cada iteración del bucle."""
         def loop(sim):
             sim.run(steps_per_update)
-        self.loop(loop)
+        # Modificación: pasar max_frames al bucle
+        self.loop_with_stop(loop, max_frames)
+
+    def loop_with_stop(self, loop=None, max_frames=None):
+        """Muestra una ventana visualizando la simulación y ejecuta la función loop, deteniéndose en max_frames."""
+        # Crear una ventana de pygame
+        self.screen = pygame.display.set_mode((self.width, self.height))
+        pygame.display.flip()
+
+        # FPS fijo
+        clock = pygame.time.Clock()
+
+        # Para dibujar texto
+        pygame.font.init()
+        self.text_font = pygame.font.SysFont('Lucida Console', 16)
+
+        # Bucle de dibujo
+        running = True
+        while running:
+            # Actualizar simulación
+            if loop: loop(self.sim)
+
+            # Dibujar simulación
+            self.draw()
+
+            # Actualizar ventana
+            pygame.display.update()
+            clock.tick(self.fps)
+
+            # Manejar todos los eventos
+            for event in pygame.event.get():
+                # Salir del programa si se cierra la ventana
+                if event.type == pygame.QUIT:
+                    running = False
+                # Manejar eventos del ratón
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    # Si se presiona un botón del ratón
+                    if event.button == 1:
+                        # Clic izquierdo
+                        x, y = pygame.mouse.get_pos()
+                        x0, y0 = self.offset
+                        self.mouse_last = (x-x0*self.zoom, y-y0*self.zoom)
+                        self.mouse_down = True
+                    if event.button == 4:
+                        # Rueda del ratón hacia arriba
+                        self.zoom *=  (self.zoom**2+self.zoom/4+1) / (self.zoom**2+1)
+                    if event.button == 5:
+                        # Rueda del ratón hacia abajo
+                        self.zoom *= (self.zoom**2+1) / (self.zoom**2+self.zoom/4+1)
+                elif event.type == pygame.MOUSEMOTION:
+                    # Arrastrar contenido
+                    if self.mouse_down:
+                        x1, y1 = self.mouse_last
+                        x2, y2 = pygame.mouse.get_pos()
+                        self.offset = ((x2-x1)/self.zoom, (y2-y1)/self.zoom)
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    self.mouse_down = False
+            # Detener automáticamente al llegar a max_frames
+            if max_frames is not None and self.sim.frame_count >= max_frames:
+                running = False
 
     def convert(self, x, y=None):
         """Convierte coordenadas de la simulación a coordenadas de la pantalla"""
